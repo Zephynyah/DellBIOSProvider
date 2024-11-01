@@ -20,8 +20,10 @@ DRIVES
 	DellSmbios:
 
 NEW FEATURES
-	DCPP 2.8.0 includes the following new features.
-	-- Support for ARM64 system
+	DCPP 2.9.0 includes the following new features.
+	-- DSC Supoort for ARM64
+	-- Memory Crash fix
+	-- ActiveKbdColor attribute implemented
 
 RUNTIME REQUIREMENTS
 	1. PowerShell 3.0 or later
@@ -107,11 +109,6 @@ INTEGRATED HELP
 	-- Get-Help Get-ChildItem -Path DellSmbios:\PowerManagement\PrimaryBattChargeCfg -Examples;
 	-- Get-Help Set-Item -Path DellSmbios:\PowerManagement\PrimaryBattChargeCfg -Examples;
 	-- Get-Help Set-Item -Path DellSmbios:\PowerManagement\PrimaryBattChargeCfg -full;
-	
-	-- Get-Help Get-ChildItem -Path DellSmbios:\SystemConfiguration\KeyboardBacklightActiveColor -full;
-	-- Get-Help Get-ChildItem -Path DellSmbios:\SystemConfiguration\KeyboardBacklightActiveColor -Examples;
-	-- Get-Help Set-Item -Path DellSmbios:\SystemConfiguration\KeyboardBacklightActiveColor -Examples;
-	-- Get-Help Set-Item -Path DellSmbios:\SystemConfiguration\KeyboardBacklightActiveColor -full;
 	
 	-- Get-Help Get-ChildItem -Path DellSmbios:\SystemConfiguration\KeyboardBacklightEnabledColors -full;
 	-- Get-Help Get-ChildItem -Path DellSmbios:\SystemConfiguration\KeyboardBacklightEnabledColors -Examples;

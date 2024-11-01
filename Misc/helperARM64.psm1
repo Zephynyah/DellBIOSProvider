@@ -1,48 +1,96 @@
-##########################################################################
-# DELL PROPRIETARY INFORMATION
-#
-# This software is confidential.  Dell Inc., or one of its subsidiaries, has supplied this
-# software to you under the terms of a license agreement,nondisclosure agreement or both.
-# You may not copy, disclose, or use this software except in accordance with those terms.
-#
-# Copyright 2020 Dell Inc. or its subsidiaries.  All Rights Reserved.
-#
-# DELL INC. MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT THE SUITABILITY OF THE SOFTWARE,
-# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
-# DELL SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE AS A RESULT OF USING,
-# MODIFYING OR DISTRIBUTING THIS SOFTWARE OR ITS DERIVATIVES.
-#
-#
-#
-##########################################################################
+# Helper functions to be used across resources
 
-<#
-This is a Resource designer script which generates a mof schema for DCPP_POSTBehavior resource in DellBIOSProvider module.
+Function New-DellEventLog{
+[CmdletBinding()]
+    param( 
+            [Parameter (Mandatory=$false)][System.string] $LogName="DellClientBIOS PowerShell",
+            [Parameter (Mandatory=$false)][System.string] $SourceName="DellBIOSProviderARM64 DSC"
+         )
+
+         $CustomLog = Get-EventLog -list | Where-object { $_.logdisplayname -eq $LogName}
+         if (! $CustomLog) {
+             $ErrorActionPreference = "Continue"
+             try{
+                 New-EventLog -LogName $LogName -Source $SourceName
+                 Write-EventLog -LogName $LogName -Source $SourceName -EntryType Information -EventID 0 -Message "DellBIOSProviderARM64 DSC started."
+             }
+         
+             catch [System.Security.SecurityException] {
+              Write-Error "Error:  Run as elevated user.  Unable to write or read to event logs."
+            }
+         }
+         
+
+}
+
+Function Write-DellEventLog{
+
+[CmdletBinding()]
+  [OutputType([int])]
+    param(
+       [Parameter (Mandatory=$false)] [System.string]$LogName="DellClientBIOS PowerShell",
+       [Parameter (Mandatory=$false)] [System.string] $SourceName = "DellBIOSProviderARM64 DSC",
+       [Parameter (Mandatory=$false)] [System.Int16] $EventID=0,
+       [Parameter (Mandatory=$false)] [System.String] $EntryType='Information',
+       [Parameter(Mandatory=$true)]   [string]$Message
+    )
+
+     $CustomLog = Get-EventLog -list | Where-object { $_.logdisplayname -eq $LogName}
+         if (! $CustomLog) {
+            New-DellEventLog
+         }
+    Write-EventLog -LogName $LogName -Source $SourceName -EntryType $EntryType -EventID $EventID -Message $Message
 
 
-#>
+}
 
-$category = New-xDscResourceProperty -name Category -Type String -Attribute Key
-$strongPassword = New-xDscResourceProperty -name StrongPassword -Type String -Attribute Write -ValidateSet @("Enabled", "Disabled")
-$passwordBypass = New-xDscResourceProperty -name PasswordBypass -Type String -Attribute Write -ValidateSet @("Enabled", "Disabled")
-$oromKeyboardAccess = New-xDscResourceProperty -name OROMKeyboardAccess -Type String -Attribute Write -ValidateSet @("Enabled", "Disabled")
-$cpuXDSupport = New-xDscResourceProperty -name CPUXDSupport -Type String -Attribute Write -ValidateSet @("Enabled", "Disabled")
-$adminSetupLockout = New-xDscResourceProperty -name AdminSetupLockout -Type String -Attribute Write -ValidateSet @("Enabled", "Disabled")
-$Password = New-xDscResourceProperty -Name Password -Type string -Attribute Write -Description "Password"
-$SecurePassword = New-xDscResourceProperty -Name SecurePassword -Type string -Attribute Write -Description "SecurePassword"
-$PathToKey = New-xDscResourceProperty -Name PathToKey -Type string -Attribute Write
+function Confirm-DellPSDrive{
+ [CmdletBinding()]
+
+    # Check if DellBIOSProviderARM64 module has already been loaded into the PS session
+
+    $DellPSProvider = Get-Module -name DellBIOSProviderARM64
+
+    if ( !$DellPSProvider)
+    {
+        Write-Verbose "Drive DellSmbios is not found. Importing DellBiosProviderARM64."
+        import-module -name DellBiosProviderARM64 -verbose -force -ErrorVariable errorInModule
+        If ($errorInModule)
+        {
+             $Message = “Module DellBiosProviderARM64 failed to import. Errors returned: $($errorInModule.exception.message)”
+             Throw $Message
+        }
+        else {
+            return $false #  Module was not already loaded
+        }
+    }
+    else
+    {
+        return $true}
+}
 
 
-$properties = @($category, $strongPassword, $passwordBypass, $oromKeyboardAccess, $cpuXDSupport, $adminSetupLockout,$Password,$SecurePassword,$PathToKey)
+function CheckModuleLoaded{
+ [CmdletBinding()]
 
-New-xDscResource -ModuleName DellBIOSProviderX86 -Name DCPP_Security -Property $properties -Path 'C:\Program Files\WindowsPowerShell\Modules' -FriendlyName "Security" -Force -Verbose
+    # Check if DellBIOSProviderARM64 module has already been loaded into the PS session
 
+    $DellPSProvider = Get-Module -name DellBIOSProviderARM64
+
+    if ( !$DellPSProvider)
+    {
+            return $false #  Module was not already loaded
+    }
+    else
+    {
+        return $true
+    }
+}
 # SIG # Begin signature block
 # MIIu0gYJKoZIhvcNAQcCoIIuwzCCLr8CAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDqaohK64UgLrAt
-# d0Hi8PYgyMgWd/C36IwTIzbKnb4sPqCCEwIwggXfMIIEx6ADAgECAhBOQOQ3VO3m
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCDAr8FCGF+M4QM
+# 0Xs7Di7xFzHrDNJJYK2dc8tTaLMW+qCCEwIwggXfMIIEx6ADAgECAhBOQOQ3VO3m
 # jAAAAABR05R/MA0GCSqGSIb3DQEBCwUAMIG+MQswCQYDVQQGEwJVUzEWMBQGA1UE
 # ChMNRW50cnVzdCwgSW5jLjEoMCYGA1UECxMfU2VlIHd3dy5lbnRydXN0Lm5ldC9s
 # ZWdhbC10ZXJtczE5MDcGA1UECxMwKGMpIDIwMDkgRW50cnVzdCwgSW5jLiAtIGZv
@@ -149,20 +197,20 @@ New-xDscResource -ModuleName DellBIOSProviderX86 -Name DCPP_Security -Property $
 # aW5nIENBIC0gRVZDUzICEHy3jaU2EO8YregKt11bePUwDQYJYIZIAWUDBAIBBQCg
 # gZowGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwG
 # CisGAQQBgjcCARUwLgYKKwYBBAGCNwIBDDEgMB6gHIAaAEQAZQBsAGwAIABTAG8A
-# bAB1AHQAaQBvAG4wLwYJKoZIhvcNAQkEMSIEICIFWoljocVy+vH+2jT0wA/rJ701
-# bKCLwygyF6etxQMvMA0GCSqGSIb3DQEBAQUABIIBgEwB664JbLvtFF22SU9B3zBp
-# Ii6zG9zNFAfE7b4IlEAnycs029TU1XaGWRI79RZpLuQed77oKR2wW1M+6ZHpAwDV
-# 6onOmUIKeQsVlZKNH+xGxmg4PAaajQ6LqBGol69C4U9+9gbimRdAliQVl2eyLq5c
-# lNlOJk+4+Ly79uREw6JRR8Kvf9BhvEz2RpM6tQP0uQiN3wPVfdH1Ekd57/DdpFXu
-# XoDLoUoz17XrIZ3s+s6grfcixfpJx0760mW1ui0exDBb+nSCsscQo5nl+b80wP6m
-# Z2M0HbJ2qy+IghjnQ99DYHbNb4qsjozyl7PRWzkP1dbI0FPN16CJ5EMQoyK7gVYU
-# SR5huhTDU0iqTlXY+piaHD8E67TUGUuHz5HixYY0KzfVivJEiZKgPyBrVyLeWRWN
-# xyXPV1SntrCmK0wVBvVcZgcq1j8faP4H+ZuD5qKUvlfF0wPs/630Ua544HZROecQ
-# hpNe9Qq4U0UIYJdx8TEsHehpET4JvE4dzPESmRN9mqGCGGMwghhfBgorBgEEAYI3
+# bAB1AHQAaQBvAG4wLwYJKoZIhvcNAQkEMSIEIBBpaNoDRa+ApCg53QNtB5ewvGlR
+# hLMtdVDLfyPH5OvGMA0GCSqGSIb3DQEBAQUABIIBgCSefrnILScI/Z69WOlGhLMu
+# Ha+9l+gLwvFiOUAXjvVOIFdCVOsalPc1htkH5CjX+Ssn4UJmc4SAV0ROZ166VVWV
+# 1xjUQaejRlt2w/vjNQNXA3VKHetwt+Wl+oGSPk8JiKaJlKif8GY0c2FAVxcYjRpk
+# 2DXpN5vAqEND61YoXITD0BAt46L8udfLBM1aFkgenGwid7/r0oJl6zgSF8XNPfpJ
+# b10Rey7vgWfRfuk1o2lJ2M6+9eR5IloA9lkg6XqClNLt/l4HwKxh5kDhoSgaKaFX
+# 4H+BDEkkb+r8N9qF/NX/bHUWsO5mETCjv61bJUUDsImiWOM6Z2OXhUBspyIU+RnG
+# PIxwqTLxeHoI+j1EaOHEyh03jsC47GvlDCgfjQwX7fCHAzSJGjM3zubQRAqcga3K
+# VVtYrBfxMxFWkgHp5ws+MM3xQ3LN+6RPmyjsEuC/XFsBvho3YtY0YdM/1+z7PuCP
+# uEdeeLKKhvxhyDfTu7SvTKxJ5EiBvv4KvI6+4aUDtqGCGGMwghhfBgorBgEEAYI3
 # AwMBMYIYTzCCGEsGCSqGSIb3DQEHAqCCGDwwghg4AgEDMQ0wCwYJYIZIAWUDBAID
 # MIHzBgsqhkiG9w0BCRABBKCB4wSB4DCB3QIBAQYKYIZIAYb6bAoDBTAxMA0GCWCG
-# SAFlAwQCAQUABCB7SYObAACHYUAl+2q5i9Fb1XncPvjtsxBYo3cisJ9GFQIIFyXg
-# d4KYB90YDzIwMjQxMDIyMDQxNDM5WjADAgEBoHmkdzB1MQswCQYDVQQGEwJDQTEQ
+# SAFlAwQCAQUABCCNDtjX4RxNzkOCOFfyP6EOPuVzjWOsmo6G5U8teO/zAgIIXUMN
+# 17Nk7+EYDzIwMjQxMDIyMDQxNDM2WjADAgEBoHmkdzB1MQswCQYDVQQGEwJDQTEQ
 # MA4GA1UECBMHT250YXJpbzEPMA0GA1UEBxMGT3R0YXdhMRYwFAYDVQQKEw1FbnRy
 # dXN0LCBJbmMuMSswKQYDVQQDEyJFbnRydXN0IFRpbWVzdGFtcCBBdXRob3JpdHkg
 # LSBUU0EyoIITDjCCBd8wggTHoAMCAQICEE5A5DdU7eaMAAAAAFHTlH8wDQYJKoZI
@@ -270,23 +318,23 @@ New-xDscResource -ModuleName DellBIOSProviderX86 -Name DCPP_Security -Property $
 # AgEBMGIwTjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUVudHJ1c3QsIEluYy4xJzAl
 # BgNVBAMTHkVudHJ1c3QgVGltZSBTdGFtcGluZyBDQSAtIFRTMgIQW3AmzJb2eBq7
 # hfYR9W27bjALBglghkgBZQMEAgOgggGLMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0B
-# CRABBDAcBgkqhkiG9w0BCQUxDxcNMjQxMDIyMDQxNDM5WjArBgkqhkiG9w0BCTQx
+# CRABBDAcBgkqhkiG9w0BCQUxDxcNMjQxMDIyMDQxNDM2WjArBgkqhkiG9w0BCTQx
 # HjAcMAsGCWCGSAFlAwQCA6ENBgkqhkiG9w0BAQ0FADBPBgkqhkiG9w0BCQQxQgRA
-# adksGN9ohHbgBSo8s73yqG+0w9cL+Ea0U6YOemuBe5QFFQOywbVOtDXxPMreOO/w
-# ACJzP61edNEpBlumILT68zCB0AYLKoZIhvcNAQkQAi8xgcAwgb0wgbowgbcwCwYJ
+# yixIoHdADWwKOwI/I5Z3zJwi4ZxPtJm3Umgc1+s/hHCdU0wMMoUNp7BF5gRFQ/my
+# /tDht1vTh/Jifa9jZGmrBzCB0AYLKoZIhvcNAQkQAi8xgcAwgb0wgbowgbcwCwYJ
 # YIZIAWUDBAIDBEA5EUIuFwI+qpkkmXQODsjo0nLTVfxc9mz5EVavl1U05ICv07x8
 # TFtX79H/vNt1FGXg1AVahU6bETnZ9+xV1f4kMGYwUqRQME4xCzAJBgNVBAYTAlVT
 # MRYwFAYDVQQKEw1FbnRydXN0LCBJbmMuMScwJQYDVQQDEx5FbnRydXN0IFRpbWUg
 # U3RhbXBpbmcgQ0EgLSBUUzICEFtwJsyW9ngau4X2EfVtu24wDQYJKoZIhvcNAQEN
-# BQAEggIAk0Y/cLqfE+3IpAb0PYjEfmooaPaK/xS0UdLmcR6Yj1k1PrRECEuTbrUy
-# V3vXrC3am2I6UC1pqGqjcXWdO/J1yPNXqdrWSc2akU+lHpfBMV8cz+S+OETKXQGz
-# Lt/jcwhqNm4d6iXPL98pAwMzF3aHQItc4ny9F60UiLg87H8BwjIM/dNFixIw26bR
-# 5qMm2xa143HcKfVQUKQKosWTHUlbhniiUsFKDPcJqyftmiPH/cUR3P+2hGdU6pU0
-# Ys2VM7vzHj/Pslq+RB5GWi/Cr+/CS94jf2dJF0MiW3H8NXHPDitmGSYCtVFEWEmF
-# c2UNlbBuBbejJeztoVeNFrej1T7tn/f6PlRGpkN/LdPWxldtpQcaBFq+pyjbKKjL
-# Wncro2cx5xnEOsWzqWOUFhac5Zc8ROl3gIEyoFnX2315QJBngKnj69sln2/nhZ82
-# lX2poGFAicxOzzStSdebFxDcWRo6Of5kLIDlTnAVBFM/RLrPypUnG1X7DTHyIXg+
-# otOw2S13eDHuzO8QkAe9Js095vu2WnQ2rtp7o6yCeYhsPGv+fDZeNu2hkesGJ5B5
-# h9jOMosUGDN4yFszOUzJ9IKUSbB6DiuqvA874WdqDgkUTTfoQdabsnhrzLzsTRhd
-# Ej0JYMZmPG+E28qYQD02kLbxmK48gliaKXu+r/oe0ykNTyR5Tv8=
+# BQAEggIAJr4KyZL3Ki2yQedpl3mbKZf1eM6LFmyu2sVcIQ7aF7hLhOt6YzY+yPpf
+# vq7iSQuQeaBG0xi2LlcnH31q27dy2aS7Al59Gm5+V/L+lK2dLmfQf6sBeyMjerJx
+# tOPQbGhnYPzj28S0yC8Qtjr0KRhC5F6gSB+B18N35cqXqnmrkDWMLvv/7FQduBQt
+# pp0Os1OCIDHIBhmUGPGjiRk0UYi95qRADLKF1b6pENL1kEawFcpB1F461fAfwPEu
+# 5Pk8OiytsmZVQrF3Yw48hcj0PBNptE6+ZtxmVNiyHDVyZIQF9JQSJAb68JMpWxxg
+# GLl4I6+q4E0ELYwXXcL47uzUl97AslmS5K25RNdtuobObIowEr1XXafOcwEy2QLc
+# pbKHfWcYRpkTAlx3tlYuNW/Cn4c8+1PZPf1EPtky4+dv684uGtBRMl57JYtlqWow
+# rJsyfUG6yReqe3V3ePBSfhKh+msjtQyhfBEB88nUk/Lg+ilKEiCF3gplRT7QNbcd
+# lehAlGox2wQ5w/GrwsxUgletiAbjN5cyxtDB8CcAjte2Pp3OXV+CCHFiL2vGDeEj
+# NdoSuFArEY/uYrZSRYIo8FlIklBTR5Naw52NYZE8JXaFBeORHpWlpb28nZ3vsRzM
+# EyR3v8FtSC0H2oiCT82urrji9zlxF8RH3oTNCPw7/vnXEWjXeL4=
 # SIG # End signature block
